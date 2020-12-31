@@ -1,0 +1,6 @@
+[workspace]
+members = [
+  "game-boy-link-driver",
+  "game-boy-link-online",
+  "game-boy-link-online-rpi",
+]
