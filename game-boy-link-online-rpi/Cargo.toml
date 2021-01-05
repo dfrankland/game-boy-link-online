@@ -7,3 +7,15 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+embedded-hal = { version = "=1.0.0-alpha.4" }
+game-boy-link-driver = { path = "../game-boy-link-driver" }
+lazy_static = "1.4.0"
+rppal = { version = "0.11.3" }
+num-traits = "0.2.14"
+num-derive = "0.3.3"
+num = "0.3.1"
+bitflags = "1.2.1"
+tokio = { version = "0.2", features = [ "full" ] }
+linux-embedded-hal = { git = "https://github.com/dfrankland/linux-embedded-hal", branch = "async-tokio", features = [ "gpio_cdev", "async-tokio" ] }
+futures = "0.3.8"
+gpio-cdev = { version = "0.4.0", features = [ "async-tokio" ] }

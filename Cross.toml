@@ -1,0 +1,5 @@
+[build.env]
+passthrough = [
+    # Fixes an ICE error with `cross` being used in a workspace
+    "CARGO_INCREMENTAL",
+]
