@@ -59,6 +59,8 @@ where
             return Ok(None);
         }
 
+        // println!("{}: {:08b} | {}: {:08b}", self.gb_bit, self.gb_sout, if self.sout.try_is_high()? { 1 } else { 0 }, self.gb_sout | if self.sout.try_is_high()? { 1 } else { 0 });
+
         self.gb_sout |= if self.sout.try_is_high()? { 1 } else { 0 };
         self.gb_bit += 1;
 
@@ -75,6 +77,13 @@ where
         self.gb_sout = 0;
 
         result
+    }
+
+    pub fn reset(&mut self) {
+        self.gb_sin = 0;
+        self.gb_sout = 0;
+        self.gb_bit = 0;
+        self.recv_buf.drain(..);
     }
 }
 

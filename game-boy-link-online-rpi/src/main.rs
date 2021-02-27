@@ -154,7 +154,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     match mode.as_str() {
         "printer" => {
             let pins = GameBoyLinkPins::from_env_vars()?;
-            printer::main_loop(pins);
+            printer::main_loop(pins).await?;
         }
         "pokemon_trade" => {
             // loop {

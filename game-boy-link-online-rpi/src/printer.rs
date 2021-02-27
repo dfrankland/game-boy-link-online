@@ -11,6 +11,7 @@ use std::{
     error::Error,
     rc::Rc,
     sync::atomic::{AtomicBool, Ordering},
+    time::Instant,
 };
 
 const PRINTER_MAGIC_0: u8 = 0x88;
@@ -81,22 +82,26 @@ impl PrinterState {
         match self {
             Self::Magic0 => {
                 if input == PRINTER_MAGIC_0 {
+                    println!("Got magic byte 0!");
                     Ok(Self::Magic1)
                 } else {
-                    Err(<Box<dyn Error>>::from(format!(
-                        "Unknown first magic byte {:#004x}. Expected 0x88.",
-                        input
-                    )))
+                    Ok(Self::Magic0)
+                    // Err(<Box<dyn Error>>::from(format!(
+                    //     "Unknown first magic byte {:#004x}. Expected 0x88.",
+                    //     input
+                    // )))
                 }
             }
             Self::Magic1 => {
                 if input == PRINTER_MAGIC_1 {
+                    println!("Got magic byte 1!");
                     Ok(Self::Cmd)
                 } else {
-                    Err(<Box<dyn Error>>::from(format!(
-                        "Unknown second magic byte {:#004x}. Expected 0x33.",
-                        input
-                    )))
+                    // Err(<Box<dyn Error>>::from(format!(
+                    //     "Unknown second magic byte {:#004x}. Expected 0x33.",
+                    //     input
+                    // )))
+                    Ok(Self::Magic0)
                 }
             }
             Self::Cmd => {
@@ -330,7 +335,7 @@ pub fn decompress_data(bytes: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
 pub async fn main_loop(pins: GameBoyLinkPins) -> Result<(), Box<dyn Error>> {
     let mut sck_events = pins.sck.async_events(
         LineRequestFlags::INPUT,
-        EventRequestFlags::RISING_EDGE,
+        EventRequestFlags::BOTH_EDGES,
         "game-boy-line-online",
     )?;
 
@@ -352,9 +357,38 @@ pub async fn main_loop(pins: GameBoyLinkPins) -> Result<(), Box<dyn Error>> {
 
     let mut printer_state = PrinterState::Magic0;
 
+    let mut last_line_event_type = None;
+
+    let mut now = Instant::now();
+
     loop {
         if let Some(event) = sck_events.next().await {
+            // If some time passes, reset the peripheral
+            let elapsed = now.elapsed();
+            if elapsed.as_secs() > 1 {
+                peripheral.reset();
+                // println!("Reset the peripheral");
+            }
+            if elapsed.as_micros() > 200 {
+                println!("Elapsed time: {}us", elapsed.as_micros());
+            }
+            // println!("Elapsed time: {}us", elapsed.as_micros());
+            now = Instant::now();
+
             if let Ok(line_event) = event {
+                // Sometimes there are duplicate events, debounce them
+                let line_event_type = line_event.event_type();
+                match &last_line_event_type {
+                    Some(llet) if llet == &line_event_type => {
+                        continue;
+                    }
+                    _ => {
+                        last_line_event_type.replace(line_event_type);
+                    }
+                };
+
+                // dbg!(&line_event.event_type());
+
                 match line_event.event_type() {
                     gpio_cdev::EventType::FallingEdge => {
                         sck.try_set_low()?;
@@ -365,6 +399,7 @@ pub async fn main_loop(pins: GameBoyLinkPins) -> Result<(), Box<dyn Error>> {
                 };
 
                 if let Some(byte) = peripheral.recv()? {
+                    // dbg!(&byte);
                     printer_state = printer_state.transition(byte)?;
                     match printer_state {
                         PrinterState::Keepalive { .. } => {
